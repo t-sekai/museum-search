@@ -55,6 +55,9 @@ async def startup() -> None:
     except Exception:
         LOG.exception("DINOv3 model preload failed; /search will retry and return 500 if it still fails")
 
+@app.get("/ping")
+async def ping():
+    return {"status": "ok"}
 
 @app.get("/health")
 async def health() -> dict[str, object]:
