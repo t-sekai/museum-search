@@ -142,3 +142,14 @@ async def search(request: SearchRequest) -> SearchResponse:
 async def reload() -> dict[str, str]:
     index_store.clear()
     return {"status": "cleared"}
+
+
+# Run the app when the script is executed
+if __name__ == "__main__":
+    import uvicorn
+
+    port = int(os.getenv("PORT", 8000))
+    print(f"Starting server on port {port}")
+
+    # Start the server
+    uvicorn.run(app, host="0.0.0.0", port=port)
