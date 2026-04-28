@@ -11,7 +11,7 @@ from typing import Any, Iterable
 import numpy as np
 import pandas as pd
 
-from schemas import validate_museum_slug_value
+from schemas import SAFE_MUSEUM_SLUG_RE, validate_museum_slug_value
 
 
 LOG = logging.getLogger(__name__)
@@ -166,6 +166,7 @@ class MuseumIndexStore:
 
     def available_museums(self) -> list[str]:
         if not self.root.exists() or not self.root.is_dir():
+            LOG.warning("Museum root does not exist or is not a directory: %s", self.root)
             return []
 
         museums = []
@@ -176,6 +177,31 @@ class MuseumIndexStore:
                 except InvalidMuseumSlug:
                     LOG.warning("Skipping unsafe museum directory name: %s", child.name)
         return sorted(museums)
+
+    def diagnostics(self) -> dict[str, Any]:
+        root_exists = self.root.exists()
+        root_is_dir = self.root.is_dir()
+        children: list[dict[str, Any]] = []
+
+        if root_exists and root_is_dir:
+            for child in sorted(self.root.iterdir(), key=lambda path: path.name):
+                if not child.is_dir():
+                    continue
+                children.append(
+                    {
+                        "name": child.name,
+                        "safe_slug": bool(SAFE_MUSEUM_SLUG_RE.fullmatch(child.name)),
+                        "has_current_json": (child / "current.json").is_file(),
+                        "has_versions_dir": (child / "versions").is_dir(),
+                    }
+                )
+
+        return {
+            "museum_root": str(self.root),
+            "museum_root_exists": root_exists,
+            "museum_root_is_dir": root_is_dir,
+            "children": children,
+        }
 
     def loaded_museums(self) -> list[str]:
         with self._lock:

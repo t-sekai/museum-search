@@ -58,10 +58,14 @@ async def startup() -> None:
 
 @app.get("/health")
 async def health() -> dict[str, object]:
+    volume_diagnostics = index_store.diagnostics()
     return {
         "status": "healthy",
         "model_loaded": embedder.is_loaded,
         "volume_root_exists": os.path.exists(VOLUME_ROOT),
+        "volume_root": VOLUME_ROOT,
+        "museum_root": MUSEUM_ROOT,
+        "museum_root_exists": volume_diagnostics["museum_root_exists"],
         "loaded_museums": index_store.loaded_museums(),
     }
 
@@ -69,6 +73,15 @@ async def health() -> dict[str, object]:
 @app.get("/museums")
 async def museums() -> dict[str, list[str]]:
     return {"available_museums": index_store.available_museums()}
+
+
+@app.get("/debug/volume")
+async def debug_volume() -> dict[str, object]:
+    return {
+        "volume_root": VOLUME_ROOT,
+        "volume_root_exists": os.path.exists(VOLUME_ROOT),
+        **index_store.diagnostics(),
+    }
 
 
 @app.post("/search", response_model=SearchResponse)
