@@ -1,0 +1,31 @@
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    MODEL_DEVICE=cpu \
+    PORT=8000
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        git \
+        libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt /tmp/requirements.txt
+
+RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && python -m pip install --no-cache-dir \
+        --index-url https://download.pytorch.org/whl/cpu \
+        --extra-index-url https://pypi.org/simple \
+        torch \ torchvision \
+    && python -m pip install --no-cache-dir -r /tmp/requirements.txt
+
+# COPY app.py image_io.py index_store.py model.py schemas.py ./
+
+EXPOSE 8000
+
+CMD ["bash"]

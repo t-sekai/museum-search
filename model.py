@@ -13,10 +13,29 @@ LOG = logging.getLogger(__name__)
 
 DEFAULT_MODEL_NAME = "facebook/dinov3-vits16-pretrain-lvd1689m"
 DEFAULT_VOLUME_MODEL_DIR = Path("/runpod-volume/visual_search/models/dinov3-vits16")
+VALID_MODEL_DEVICES = {"auto", "cpu", "cuda"}
 
 
 class ModelLoadError(RuntimeError):
     pass
+
+
+def resolve_torch_device(torch_module: Any) -> Any:
+    requested_device = os.getenv("MODEL_DEVICE", "auto").strip().lower()
+    if requested_device not in VALID_MODEL_DEVICES:
+        raise ModelLoadError(
+            "MODEL_DEVICE must be one of: auto, cpu, cuda"
+        )
+
+    if requested_device == "cpu":
+        return torch_module.device("cpu")
+
+    if requested_device == "cuda":
+        if not torch_module.cuda.is_available():
+            raise ModelLoadError("MODEL_DEVICE=cuda was requested, but CUDA is not available")
+        return torch_module.device("cuda")
+
+    return torch_module.device("cuda" if torch_module.cuda.is_available() else "cpu")
 
 
 def extract_embeddings(outputs: object):
@@ -117,7 +136,7 @@ class ImageEmbedder:
             ) from exc
 
         try:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            self.device = resolve_torch_device(torch)
             self.processor, self.model = self._load_from_candidates()
             self.model = self.model.to(self.device)
             self.model.eval()
@@ -152,4 +171,3 @@ class ImageEmbedder:
         embedding = (embedding / norm).astype(np.float32, copy=False)
         self._embedding_dim = int(embedding.shape[0])
         return embedding
-
